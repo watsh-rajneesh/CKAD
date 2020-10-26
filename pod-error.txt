@@ -1,0 +1,1 @@
+  Warning  Failed     16s               kubelet, worker2.vagrant.vm  Failed to pull image "nginx:2.3.5": rpc error: code = Unknown desc = Error reading manifest 2.3.5 in docker.io/library/nginx: manifest unknown: manifest unknown

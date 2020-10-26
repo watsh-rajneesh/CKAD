@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: multi
+  name: multi
+spec:
+  containers:
+  - args:
+    - /bin/sh
+    - -c
+    - echo hello; sleep 3600
+    image: busybox
+    name: multi1
+    resources: {}
+  - args:
+    - /bin/sh
+    - -c
+    - echo hello; sleep 3600
+    image: busybox
+    name: multi2
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Never
+status: {}

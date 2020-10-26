@@ -1,0 +1,141 @@
+1. Using run/create command for pods,deployments, etc.
+The specific, underlying resource created from a particular create/run command is based on its 'generator'.
+alias k=kubectl
+$ kubectl config set-context <context-of-question> --namespace=<namespace-of-question>
+
+k run --restart=Never => pod
+k run --restart=Always => deployment (can set --replicas, --port), service (--expose)
+k run --restart=OnFailure => job/cronjob (if --schedule provided)
+
+$ kubectl run nginx --image=nginx --restart=Never  #pod
+$ kubectl create job nginx --image=nginx  #job
+$ kubectl create cronjob nginx --image=nginx --schedule="* * * * *"  #cronJob
+
+Deployment
+$ kubectl run myapp --image=nginx --restart=Always --replicas=2 --port=80
+Service
+$ kubectl expose deployment myapp --target-port 80
+
+$ kubectl create deployment nginx --image=nginx  #deployment
+k rollout history deploy nginx
+k rollout undo deploy nginx --to-revision=3
+k set image deploy nginx nginx=nginx:1.7.9
+k scale deploy nginx --replicas=5
+k autoscale deploy nginx --min=5 --max=10 --cpu-percent=80
+
+kubectl expose deploy foo --port=6262 --target-port=8080
+kubectl get service foo # you will see ClusterIP as well as port 6262
+kubectl get endpoints foo # you will see the IPs of the three replica nodes, listening on port 8080
+
+Remove label app from pods:
+k label po nginx app=v1
+kubectl label po nginx1 nginx2 nginx3 app-
+kubectl delete deploy nginx
+kubectl delete hpa nginx
+
+Pod with requests and limits:
+kubectl run nginx --image=nginx --restart=Never --requests='cpu=100m,memory=256Mi' --limits='cpu=200m,memory=512Mi'
+
+2. Create configmap and use in pods
+
+$ kubectl create configmap app-config --from-literal=key123=value123
+configmap "app-config" created
+
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    envFrom:
+    - configMapRef:
+        name: app-config
+
+3. Using wget access webpage.
+wget -O- 10.108.88.208:80
+
+3. Security contexts - applied at pod or container level.
+apiVersion: v1
+kind: Pod
+spec:
+  securityContext:
+    runAsUser: 1000
+  containers:
+  - name: sec-ctx-demo
+    image: gcr.io/google-samples/node-hello:1.0
+    securityContext:
+      runAsUser: 2000
+      allowPrivilegeEscalation: false
+
+4. Network policy
+Allow ingress from pods with label access:granted to pods with label run:nginx
+
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: access-nginx # pick a name
+spec:
+  podSelector:
+    matchLabels:
+      run: nginx # selector for the pods
+  ingress: # allow ingress traffic
+  - from:
+    - podSelector: # from pods
+        matchLabels: # with this label
+          access: granted
+
+5. Storage
+
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: myvolume
+spec:
+  storageClassName: normal
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+    - ReadWriteMany
+  hostPath:
+    path: /etc/foo
+
+-----
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: mypvc
+spec:
+  storageClassName: normal
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 4Gi
+
+-----
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: busybox
+  name: busybox
+spec:
+  containers:
+  - args:
+    - /bin/sh
+    - -c
+    - sleep 3600
+    image: busybox
+    imagePullPolicy: IfNotPresent
+    name: busybox
+    resources: {}
+    volumeMounts: #
+    - name: myvolume #
+      mountPath: /etc/foo #
+  dnsPolicy: ClusterFirst
+  restartPolicy: Never
+  volumes: #
+  - name: myvolume #
+    persistentVolumeClaim: #
+      claimName: mypvc #
+status: {}
